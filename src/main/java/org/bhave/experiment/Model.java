@@ -29,6 +29,6 @@ public interface Model extends Configurable, Prototype<Model>, Runnable {
 
     public int getRun();
 
-    public int getStep();
+    public long getStep();
 
 }

@@ -44,7 +44,7 @@ public class DummyModel extends AbstractModel {
     }
 
     @Override
-    public int getStep() {
+    public long getStep() {
         return 1;
     }
 

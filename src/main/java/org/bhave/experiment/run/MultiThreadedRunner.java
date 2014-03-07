@@ -1,5 +1,9 @@
 package org.bhave.experiment.run;
 
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -21,136 +25,160 @@ import org.bhave.experiment.data.producer.DataProducer;
 import org.bhave.sweeper.CombinedParameterSweep;
 import org.joda.time.Period;
 
+import scala.annotation.meta.param;
+
 /**
  * This is an experiment runner that uses a the local computer threads as a mean
  * to parallelize the model execution.
- *
+ * 
  * @author Davide Nunes
  */
 public class MultiThreadedRunner extends AbstractExperimentRunner {
 
-    @Override
-    public void start() {
+	@Override
+	public void start() {
 
-        super.start();
+		super.start();
 
-        int cores = Runtime.getRuntime().availableProcessors();
+		int cores = Runtime.getRuntime().availableProcessors();
 
-        ExecutorService executor = Executors.newFixedThreadPool(cores);
-        CompletionService<Model> pool = new ExecutorCompletionService<>(
-                executor);
+		ExecutorService executor = Executors.newFixedThreadPool(cores);
+		CompletionService<Model> pool = new ExecutorCompletionService<>(
+				executor);
 
-        CombinedParameterSweep params = experiment.getParameterSpace();
-        Iterator<Configuration> configs = params.iterator();
+		CombinedParameterSweep params = experiment.getParameterSpace();
+		Iterator<Configuration> configs = params.iterator();
 
-        /**
-         * *********************************************** + submit "core"
-         * number of tasks
-         */
-        int numSubmitted = 0;
-        modelProto = experiment.getModel();
+		/**
+		 * *********************************************** + submit "core"
+		 * number of tasks
+		 */
+		int numSubmitted = 0;
+		modelProto = experiment.getModel();
 
-        while (configs.hasNext() && numSubmitted < cores) {
+		while (configs.hasNext() && numSubmitted < cores) {
 
-            Configuration config = configs.next();
+			Configuration config = configs.next();
 
-            //Setup the model with data producers
-            Model model = setupModel(modelProto, config, experiment);
+			// Setup the model with data producers
+			Model model = setupModel(modelProto, config, experiment);
 
-            pool.submit(model, model);
-            numSubmitted++;
+			pool.submit(model, model);
+			numSubmitted++;
 
-            if (console == null) {
-                int run = config.containsKey("run") ? config.getInt("run") : 1;
-                System.out.println("Submited Run: " + run);
-            }
-        }
+			if (console == null) {
+				int run = config.containsKey("run") ? config.getInt("run") : 1;
+				System.out.println("Submited Run: " + run);
+			}
+		}
 
-        /**
-         * *********************************************** + keep submitting
-         * tasks
-         */
-        this.completedRuns = 0;
-        long sumDurations = 0;
-        while (completedRuns < params.size()) {
-            try {
-                Future<Model> futureModel = pool.take();
+		/**
+		 * *********************************************** + keep submitting
+		 * tasks
+		 */
+		this.completedRuns = 0;
+		long sumDurations = 0;
+		while (completedRuns < params.size()) {
+			try {
+				Future<Model> futureModel = pool.take();
 
-                completedRuns++;
+				completedRuns++;
 
-                Model model = futureModel.get();
+				Model model = futureModel.get();
 
-                long modelStartTime = model.getStartTime();
+				long modelStartTime = model.getStartTime();
 
-                long currentTime = System.currentTimeMillis();
+				long currentTime = System.currentTimeMillis();
 
-                long duration = currentTime - modelStartTime;
+				long duration = currentTime - modelStartTime;
 
-                sumDurations = (sumDurations + duration);
-                long estimatedMillisRemaining = (sumDurations / completedRuns)
-                        * (totalRuns - completedRuns);
+				sumDurations = (sumDurations + duration);
+				long estimatedMillisRemaining = (sumDurations / completedRuns)
+						* (totalRuns - completedRuns);
 
-                estimatedTime = new Period(estimatedMillisRemaining);
-                if (console != null) {
-                    console.updateProgress(estimatedTime, getProgress(),
-                            completedRuns, totalRuns);
-                } else {
-                    System.out
-                            .println("progress: "
-                                    + completedRuns
-                                    + "/"
-                                    + totalRuns
-                                    + " estimated time: "
-                                    + String.format(
-                                            "%02d days %02d hours%02d minutes %02d seconds",
-                                            estimatedTime.getDays(),
-                                            estimatedTime.getHours(),
-                                            estimatedTime.getMinutes(),
-                                            estimatedTime.getSeconds()));
-                }
+				estimatedTime = new Period(estimatedMillisRemaining);
+				if (console != null) {
+					console.updateProgress(estimatedTime, getProgress(),
+							completedRuns, totalRuns);
+				} else {
+					System.out
+							.println("progress: "
+									+ completedRuns
+									+ "/"
+									+ totalRuns
+									+ " estimated time: "
+									+ String.format(
+											"%02d days %02d hours%02d minutes %02d seconds",
+											estimatedTime.getDays(),
+											estimatedTime.getHours(),
+											estimatedTime.getMinutes(),
+											estimatedTime.getSeconds()));
+				}
 
-                //process inMemory Data Consumers
-                for (DataConsumer consumer : inMemoryConsumers) {
-                    DataProducer producer = model.getDataProducer(consumer.getProducerID());
-                    //this is needed to retrieve the data from the producer
-                    consumer.loadDataProducer(producer);
-                    consumer.consume();
-                }
+				// process inMemory Data Consumers
+				for (DataConsumer consumer : inMemoryConsumers) {
+					DataProducer producer = model.getDataProducer(consumer
+							.getProducerID());
+					// this is needed to retrieve the data from the producer
+					consumer.loadDataProducer(producer);
+					consumer.consume();
+				}
 
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-            // submit another task
-            if (configs.hasNext()) {
-                Configuration config = configs.next();
-                //setup the model with data producers
-                Model model = setupModel(modelProto, config, experiment);
+			} catch (InterruptedException | ExecutionException e) {
+				throw new RuntimeException(e);
+			}
+			// submit another task
+			if (configs.hasNext()) {
+				Configuration config = configs.next();
+				// setup the model with data producers
+				Model model = setupModel(modelProto, config, experiment);
 
-                pool.submit(model, model);
-                numSubmitted++;
+				pool.submit(model, model);
+				numSubmitted++;
 
-                if (console == null) {
-                    int run = config.containsKey("run") ? config.getInt("run") : 1;
-                    System.out.println("Submited Run: " + run);
-                }
-            }
-        }
-        System.out.println("All done, shuttdown executor");
-        executor.shutdown();
-        //shutdown experiment runner
-        shutdown();
+				if (console == null) {
+					int run = config.containsKey("run") ? config.getInt("run")
+							: 1;
+					System.out.println("Submited Run: " + run);
+				}
+			}
+		}
+		System.out.println("All done, shuttdown executor");
 
-    }
+		executor.shutdown();
 
-    @Override
-    public void stop() {
-        throw new UnsupportedOperationException("The Multi-threaded runner cannot be stopped");
+		// experiment file name
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");
+		Calendar cal = Calendar.getInstance();
 
-    }
+		StringBuilder sb = new StringBuilder("param-space");
 
-    @Override
-    public void pause() {
-        throw new UnsupportedOperationException("The Multi-threaded runner cannot be stopped");
-    }
+		sb.append('_').append(dateFormat.format(cal.getTime()));
+		sb.append("experiment:").append(experiment.getUID());
+		sb.append('_');
+		sb.append(".csv");
+
+		try {
+			params.writeSweepFile(sb.toString());
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		// shutdown experiment runner
+		shutdown();
+
+	}
+
+	@Override
+	public void stop() {
+		throw new UnsupportedOperationException(
+				"The Multi-threaded runner cannot be stopped");
+
+	}
+
+	@Override
+	public void pause() {
+		throw new UnsupportedOperationException(
+				"The Multi-threaded runner cannot be stopped");
+	}
 
 }
