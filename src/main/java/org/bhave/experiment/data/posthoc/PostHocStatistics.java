@@ -3,7 +3,10 @@ package org.bhave.experiment.data.posthoc;
 import java.util.List;
 import java.util.Properties;
 
+import org.bhave.experiment.Configurable;
 import org.bhave.experiment.Model;
+import org.bhave.experiment.Prototype;
+import org.bhave.experiment.data.DataExporter;
 
 /**
  * <p>
@@ -17,7 +20,8 @@ import org.bhave.experiment.Model;
  * @author Davide Nunes
  * 
  */
-public interface PostHocStatistics {
+public interface PostHocStatistics extends Configurable,
+		Prototype<PostHocStatistics> {
 	/**
 	 * Returns the name of this statistics measure or report.
 	 * 
@@ -63,4 +67,16 @@ public interface PostHocStatistics {
 	 * @return a list of names for the data columns.
 	 */
 	public List<String> getDataColumns();
+
+	public void addExporter(DataExporter export);
+
+	/**
+	 * Should use the {@link #measure(Model)} method to get the information out
+	 * of the model and produce a report for each exporter.
+	 * 
+	 * @param the
+	 *            model to be inspected
+	 * @return
+	 */
+	public void report(Model model);
 }

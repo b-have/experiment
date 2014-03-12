@@ -16,6 +16,7 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.bhave.experiment.data.DataExporter;
 import org.bhave.experiment.data.Statistics;
 import org.bhave.experiment.data.consumer.DataConsumer;
+import org.bhave.experiment.data.posthoc.PostHocStatistics;
 import org.bhave.experiment.data.producer.DataProducer;
 import org.bhave.sweeper.CombinedParameterSweep;
 import org.bhave.sweeper.ParameterSweepUtil;
@@ -32,7 +33,7 @@ import org.bhave.sweeper.impl.SweepLoader;
  * {@link CombinedParameterSweep}) and run these Configurable objects using an
  * experiment runner.
  * </p>
- *
+ * 
  * <h3>Experiment Configuration Files</h3>
  * <p>
  * You can configure an experiment using an experiment configuration file. The
@@ -48,293 +49,390 @@ import org.bhave.sweeper.impl.SweepLoader;
  * this can be whathever you want
  * <li>runs = 30 #number of runs that should be used for each combination of
  * parameters
- *
+ * 
  * <li>data.producers.0 = a class path</li>
  * <li>data.producers.0.[some-param-name] = some value</li>
- *
+ * 
  * </ul>
- *
+ * 
  * Note that each data producer provides the documentation for the parameters
  * needed.
- *
+ * 
  * for the parameter sweep syntax see the documentation of {@link SweepLoader}
  * since this is used to load the parameter space.
  * </p>
- *
- *
- *
- *
+ * 
+ * 
+ * 
+ * 
  * @author Davide Nunes
  */
 public class Experiment {
 
-    public static final String P_EUID = "euid";
+	public static final String P_EUID = "euid";
 
-    private Model model;
+	private Model model;
 
-    private ExperimentRunner runner;
+	private ExperimentRunner runner;
 
-    private Configuration config;
-    private String uid;
+	private Configuration config;
+	private String uid;
 
-    private CombinedParameterSweep parameterSpace;
-    private int runs;
+	private CombinedParameterSweep parameterSpace;
+	private int runs;
 
-    //producers to be attached to the model
-    private Map<Integer, DataProducer> dataProducers;
-    public static final String P_DATA_PRODUCERS_BASE = "data.producers";
-    public static final String P_DATA_PRODUCERS_STATS_BASE = "stats";
+	// producers to be attached to the model
+	private Map<Integer, DataProducer> dataProducers;
+	public static final String P_DATA_PRODUCERS_BASE = "data.producers";
+	public static final String P_DATA_PRODUCERS_STATS_BASE = "stats";
 
-    //consumers to be attached to the experiment runner
-    private Map<Integer, DataConsumer> dataConsumers;
-    public static final String P_DATA_CONSUMERS_BASE = "data.consumers";
-    public static final String P_DATA_CONSUMERS_EXPORT_BASE = "export";
+	// consumers to be attached to the experiment runner
+	private Map<Integer, DataConsumer> dataConsumers;
+	public static final String P_DATA_CONSUMERS_BASE = "data.consumers";
+	public static final String P_DATA_CONSUMERS_EXPORT_BASE = "export";
 
-    private Map<Integer, Integer> consumerProducerMap;
+	// posthoc statistics to be attached to the experiment runner
+	public static final String P_POSTHOC_STATISTICS_BASE = "data.posthoc.stats";
+	public static final String P_POSTHOC_STATISTICS_EXPORT_BASE = "export";
 
-    private Experiment() {
+	private Map<Integer, Integer> consumerProducerMap;
 
-    }
+	private Map<Integer, PostHocStatistics> postHocStatsMap;
 
-    public static Experiment fromFile(String pathName) {
-        return fromFile(new File(pathName));
-    }
+	private Experiment() {
 
-    public static Experiment fromFile(File file) {
+	}
 
-        Experiment experiment = new Experiment();
+	public static Experiment fromFile(String pathName) {
+		return fromFile(new File(pathName));
+	}
 
-        experiment.consumerProducerMap = new HashMap<>();
-        try {
-            experiment.config = new PropertiesConfiguration(file);
-        } catch (ConfigurationException cfge) {
-            throw new RuntimeException(
-                    "Experiment configuration file is not properly formated");
-        }
+	// TODO this should be separated in the multiple loading methods
+	public static Experiment fromFile(File file) {
 
-        if (!experiment.config.containsKey(P_EUID)) {
-            throw new RuntimeException(
-                    "Experiment configuration file does not contain an experiment unique id, please provide one using \" euid = some unique experiment name");
-        }
-        experiment.uid = experiment.config.getString(P_EUID);
+		Experiment experiment = new Experiment();
 
-        // read runs (defaults to 1)
-        experiment.runs = 1;
+		experiment.consumerProducerMap = new HashMap<>();
+		try {
+			experiment.config = new PropertiesConfiguration(file);
+		} catch (ConfigurationException cfge) {
+			throw new RuntimeException(
+					"Experiment configuration file is not properly formated");
+		}
 
-        if (experiment.config.containsKey("runs")) {
-            int numRuns = experiment.config.getInt("runs");
-            if (numRuns >= 1) {
-                experiment.runs = numRuns;
-            }
-        }
+		if (!experiment.config.containsKey(P_EUID)) {
+			throw new RuntimeException(
+					"Experiment configuration file does not contain an experiment unique id, please provide one using \" euid = some unique experiment name");
+		}
+		experiment.uid = experiment.config.getString(P_EUID);
 
-        // create combined parameter sweep
-        experiment.parameterSpace = ParameterSweepUtil.loadCombinedSweep(file,
-                experiment.runs);
+		// read runs (defaults to 1)
+		experiment.runs = 1;
 
-        // read model and runner prototype
-        if (experiment.config.containsKey("model")
-                && experiment.config.containsKey("runner")) {
+		if (experiment.config.containsKey("runs")) {
+			int numRuns = experiment.config.getInt("runs");
+			if (numRuns >= 1) {
+				experiment.runs = numRuns;
+			}
+		}
 
-            String modelPrototype = experiment.config.getString("model");
-            String runner = experiment.config.getString("runner");
+		// create combined parameter sweep
+		experiment.parameterSpace = ParameterSweepUtil.loadCombinedSweep(file,
+				experiment.runs);
 
-            try {
-                ClassLoader loader = Thread.currentThread().getContextClassLoader();
-                Class<?> modelClass = Class.forName(modelPrototype, true, loader);
-                Class<?> runnerClass = Class.forName(runner, true, loader);
+		// read model and runner prototype
+		if (experiment.config.containsKey("model")
+				&& experiment.config.containsKey("runner")) {
 
-                experiment.model = (Model) modelClass.newInstance();
-                experiment.runner = (ExperimentRunner) runnerClass
-                        .newInstance();
+			String modelPrototype = experiment.config.getString("model");
+			String runner = experiment.config.getString("runner");
 
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
-                throw new RuntimeException(e);
-            }
+			try {
+				ClassLoader loader = Thread.currentThread()
+						.getContextClassLoader();
+				Class<?> modelClass = Class.forName(modelPrototype, true,
+						loader);
+				Class<?> runnerClass = Class.forName(runner, true, loader);
 
-        } else {
-            throw new RuntimeException(
-                    "Please specify the model prototype and the runner  classes");
-        }
+				experiment.model = (Model) modelClass.newInstance();
+				experiment.runner = (ExperimentRunner) runnerClass
+						.newInstance();
 
-        //load the data producers + statistics
-        int i = 0;
-        String currentProducer = P_DATA_PRODUCERS_BASE + "." + i;
-        while (experiment.config.containsKey(currentProducer)) {
-            System.out.println(currentProducer);
-            try {
-                DataProducer producer = (DataProducer) loadConfigurable(currentProducer, experiment.config);
-                producer.setID(i);
-                experiment.addProducer(producer);
+			} catch (ClassNotFoundException | IllegalAccessException
+					| InstantiationException e) {
+				throw new RuntimeException(e);
+			}
 
-                //load statistics into the producer
-                int s = 0;
-                String currentStats = currentProducer + "." + P_DATA_PRODUCERS_STATS_BASE + "." + s;
+		} else {
+			throw new RuntimeException(
+					"Please specify the model prototype and the runner  classes");
+		}
 
-                while (experiment.config.containsKey(currentStats)) {
+		// load the data producers + statistics
+		int i = 0;
+		String currentProducer = P_DATA_PRODUCERS_BASE + "." + i;
+		while (experiment.config.containsKey(currentProducer)) {
+			System.out.println(currentProducer);
+			try {
+				DataProducer producer = (DataProducer) loadConfigurable(
+						currentProducer, experiment.config);
+				producer.setID(i);
+				experiment.addProducer(producer);
 
-                    Statistics stats = (Statistics) loadConfigurable(currentStats, experiment.config);
-                    producer.addStatistics(stats);
+				// load statistics into the producer
+				int s = 0;
+				String currentStats = currentProducer + "."
+						+ P_DATA_PRODUCERS_STATS_BASE + "." + s;
 
-                    s++;
-                    currentStats = currentProducer + "." + P_DATA_PRODUCERS_STATS_BASE + "." + s;
-                }
+				while (experiment.config.containsKey(currentStats)) {
 
-            } catch (ClassNotFoundException ex) {
-                throw new RuntimeException(ex);
-            } catch (IllegalAccessException | InstantiationException ex) {
-                Logger.getLogger(Experiment.class.getName()).log(Level.SEVERE, null, ex);
-            }
+					Statistics stats = (Statistics) loadConfigurable(
+							currentStats, experiment.config);
+					producer.addStatistics(stats);
 
-            //next producer
-            i++;
-            currentProducer = P_DATA_PRODUCERS_BASE + "." + i;
-        }
+					s++;
+					currentStats = currentProducer + "."
+							+ P_DATA_PRODUCERS_STATS_BASE + "." + s;
+				}
 
-        //Load the data consumers + exporters
-        i = 0;
-        String currentConsumer = P_DATA_CONSUMERS_BASE + "." + i;
+			} catch (ClassNotFoundException ex) {
+				throw new RuntimeException(ex);
+			} catch (IllegalAccessException | InstantiationException ex) {
+				Logger.getLogger(Experiment.class.getName()).log(Level.SEVERE,
+						null, ex);
+			}
 
-        while (experiment.config.containsKey(currentConsumer)) {
+			// next producer
+			i++;
+			currentProducer = P_DATA_PRODUCERS_BASE + "." + i;
+		}
 
-            try {
-                DataConsumer consumer = (DataConsumer) loadConfigurable(currentConsumer, experiment.config);
-                consumer.setID(i);
-                experiment.addConsumer(consumer);
+		// Load the data consumers + exporters
+		i = 0;
+		String currentConsumer = P_DATA_CONSUMERS_BASE + "." + i;
 
-                int producerID = consumer.getProducerID();
-                DataProducer producer = experiment.getProducer(producerID);
-                if (producer == null) {
-                    //incorrect mapping 
-                    throw new RuntimeException("Incorrect Mapping between data Consumer and Producer: consumer " + consumer.getID() + " was mapped to producer " + producerID + " which is undefined");
-                }
+		while (experiment.config.containsKey(currentConsumer)) {
 
-                //load exporters into consumer
-                int s = 0;
-                String currentExport = currentConsumer + "." + P_DATA_CONSUMERS_EXPORT_BASE + "." + s;
+			try {
+				DataConsumer consumer = (DataConsumer) loadConfigurable(
+						currentConsumer, experiment.config);
+				consumer.setID(i);
+				experiment.addConsumer(consumer);
 
-                while (experiment.config.containsKey(currentExport)) {
+				int producerID = consumer.getProducerID();
+				DataProducer producer = experiment.getProducer(producerID);
+				if (producer == null) {
+					// incorrect mapping
+					throw new RuntimeException(
+							"Incorrect Mapping between data Consumer and Producer: consumer "
+									+ consumer.getID()
+									+ " was mapped to producer " + producerID
+									+ " which is undefined");
+				}
 
-                    DataExporter export = (DataExporter) loadConfigurable(currentExport, experiment.config);
-                    consumer.addExporter(export);
+				// load exporters into consumer
+				int s = 0;
+				String currentExport = currentConsumer + "."
+						+ P_DATA_CONSUMERS_EXPORT_BASE + "." + s;
 
-                    s++;
-                    currentExport = currentConsumer + "." + P_DATA_CONSUMERS_EXPORT_BASE + "." + s;
-                }
+				while (experiment.config.containsKey(currentExport)) {
 
-            } catch (ClassNotFoundException ex) {
-                throw new RuntimeException(ex);
-            } catch (IllegalAccessException | InstantiationException ex) {
-                Logger.getLogger(Experiment.class.getName()).log(Level.SEVERE, null, ex);
-            }
+					DataExporter export = (DataExporter) loadConfigurable(
+							currentExport, experiment.config);
+					consumer.addExporter(export);
 
-            //next consumer
-            i++;
-            currentConsumer = P_DATA_CONSUMERS_BASE + "." + i;
-        }
+					s++;
+					currentExport = currentConsumer + "."
+							+ P_DATA_CONSUMERS_EXPORT_BASE + "." + s;
+				}
 
-        return experiment;
-    }
+			} catch (ClassNotFoundException ex) {
+				throw new RuntimeException(ex);
+			} catch (IllegalAccessException | InstantiationException ex) {
+				Logger.getLogger(Experiment.class.getName()).log(Level.SEVERE,
+						null, ex);
+			}
 
-    /**
-     * Load some configurable object from the current configuration
-     *
-     * @param currentBase the base name for the properties to be loaded
-     * @param config the current configuration from which the object is loadedF
-     *
-     *
-     * The following exceptions are thrown in case the classes are not found
-     *
-     * @throws InstantiationException
-     * @throws ClassNotFoundException
-     * @throws IllegalAccessException
-     */
-    private static Configurable loadConfigurable(String currentBase, Configuration config) throws InstantiationException, ClassNotFoundException, IllegalAccessException {
+			// next consumer
+			i++;
+			currentConsumer = P_DATA_CONSUMERS_BASE + "." + i;
+		}
 
-        String configurableClassName = config.getString(currentBase);
-        ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        System.out.println(configurableClassName);
-        Class<?> configClass = Class.forName(configurableClassName, true, loader);
+		// load posthoc statistics and exporters
 
-        Configurable configurable = (Configurable) configClass.newInstance();
+		i = 0;
+		String currentPostHoc = P_POSTHOC_STATISTICS_BASE + "." + i;
 
-        //TODO check if the data statistics target model is consistent with the model class loaded
-        //retrieve the producer configuration
-        Map<String, Class<? extends Object>> parameterClasses = configurable.getConfigurableParameters();
-        Configuration producerConfig = new PropertiesConfiguration();
+		while (experiment.config.containsKey(currentPostHoc)) {
 
-        for (String parameter : parameterClasses.keySet()) {
-            String currentProperty = currentBase + "." + parameter;
-            if (config.containsKey(currentProperty)) {
-                producerConfig.addProperty(parameter, config.getProperty(currentProperty));
-            } else {
-                throw new RuntimeException("Missing parameter for " + configurableClassName + ": " + currentProperty);
-            }
-        }
-        //load the producer configuration
-        configurable.loadConfiguration(producerConfig);
-        return configurable;
-    }
+			try {
+				PostHocStatistics posthoc = (PostHocStatistics) loadConfigurable(
+						currentPostHoc, experiment.config);
 
-    public Model getModel() {
-        return model;
-    }
+				experiment.addPostHocStatistics(posthoc, i);
 
-    public CombinedParameterSweep getParameterSpace() {
-        return parameterSpace;
-    }
+				// load exporters into posthoc stats
+				int s = 0;
+				String currentExport = currentPostHoc + "."
+						+ P_POSTHOC_STATISTICS_EXPORT_BASE + "." + s;
 
-    public String getUID() {
-        return uid;
-    }
+				while (experiment.config.containsKey(currentExport)) {
 
-    public ExperimentRunner getRunner() {
-        return runner;
-    }
+					DataExporter export = (DataExporter) loadConfigurable(
+							currentExport, experiment.config);
+					posthoc.addExporter(export);
 
-    public Collection<? extends DataProducer> getProducers() {
-        return dataProducers.values();
-    }
+					s++;
+					currentExport = currentPostHoc + "."
+							+ P_POSTHOC_STATISTICS_EXPORT_BASE + "." + s;
+				}
 
-    public Collection<? extends DataConsumer> getConsumers() {
-        return dataConsumers.values();
-    }
+			} catch (ClassNotFoundException ex) {
+				throw new RuntimeException(ex);
+			} catch (IllegalAccessException | InstantiationException ex) {
+				Logger.getLogger(Experiment.class.getName()).log(Level.SEVERE,
+						null, ex);
+			}
 
-    public Map<Integer, Integer> getProducerConsumerMap() {
-        return consumerProducerMap;
-    }
+			// next posthoc statistics
+			i++;
+			currentPostHoc = P_POSTHOC_STATISTICS_BASE + "." + i;
+		}
 
-    public void addProducer(DataProducer producer) {
-        if (producer != null) {
-            if (dataProducers == null) {
-                dataProducers = new HashMap<>();
-            }
-            dataProducers.put(producer.getID(), producer);
-        }
-    }
+		return experiment;
+	}
 
-    public void addConsumer(DataConsumer consumer) {
-        if (consumer != null) {
-            if (dataConsumers == null) {
-                dataConsumers = new HashMap<>();
-            }
-            dataConsumers.put(consumer.getID(), consumer);
-        }
-    }
+	/**
+	 * Load some configurable object from the current configuration
+	 * 
+	 * @param currentBase
+	 *            the base name for the properties to be loaded
+	 * @param config
+	 *            the current configuration from which the object is loadedF
+	 * 
+	 * 
+	 *            The following exceptions are thrown in case the classes are
+	 *            not found
+	 * 
+	 * @throws InstantiationException
+	 * @throws ClassNotFoundException
+	 * @throws IllegalAccessException
+	 */
+	private static Configurable loadConfigurable(String currentBase,
+			Configuration config) throws InstantiationException,
+			ClassNotFoundException, IllegalAccessException {
 
-    public DataConsumer getConsumer(int id) {
-        return dataConsumers.get(id);
-    }
+		String configurableClassName = config.getString(currentBase);
+		ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		System.out.println(configurableClassName);
+		Class<?> configClass = Class.forName(configurableClassName, true,
+				loader);
 
-    public DataProducer getProducer(int id) {
-        return dataProducers.get(id);
-    }
+		Configurable configurable = (Configurable) configClass.newInstance();
 
-    public void mapConsumerToProducer(DataConsumer consumer, DataProducer producer) {
-        if (consumerProducerMap == null) {
-            consumerProducerMap = new HashMap<>();
-        }
-        consumerProducerMap.put(consumer.getID(), producer.getID());
-    }
+		// TODO check if the data statistics target model is consistent with the
+		// model class loaded
+		// retrieve the producer configuration
+		Map<String, Class<? extends Object>> parameterClasses = configurable
+				.getConfigurableParameters();
+		Configuration producerConfig = new PropertiesConfiguration();
+
+		for (String parameter : parameterClasses.keySet()) {
+			String currentProperty = currentBase + "." + parameter;
+			if (config.containsKey(currentProperty)) {
+				producerConfig.addProperty(parameter,
+						config.getProperty(currentProperty));
+			} else {
+				throw new RuntimeException("Missing parameter for "
+						+ configurableClassName + ": " + currentProperty);
+			}
+		}
+		// load the producer configuration
+		configurable.loadConfiguration(producerConfig);
+		return configurable;
+	}
+
+	public Model getModel() {
+		return model;
+	}
+
+	public CombinedParameterSweep getParameterSpace() {
+		return parameterSpace;
+	}
+
+	public String getUID() {
+		return uid;
+	}
+
+	public ExperimentRunner getRunner() {
+		return runner;
+	}
+
+	public Collection<? extends DataProducer> getProducers() {
+		return dataProducers.values();
+	}
+
+	public Collection<? extends DataConsumer> getConsumers() {
+		return dataConsumers.values();
+	}
+
+	public Map<Integer, Integer> getProducerConsumerMap() {
+		return consumerProducerMap;
+	}
+
+	public void addProducer(DataProducer producer) {
+		if (producer != null) {
+			if (dataProducers == null) {
+				dataProducers = new HashMap<>();
+			}
+			dataProducers.put(producer.getID(), producer);
+		}
+	}
+
+	public void addConsumer(DataConsumer consumer) {
+		if (consumer != null) {
+			if (dataConsumers == null) {
+				dataConsumers = new HashMap<>();
+			}
+			dataConsumers.put(consumer.getID(), consumer);
+		}
+	}
+
+	public DataConsumer getConsumer(int id) {
+		return dataConsumers.get(id);
+	}
+
+	public DataProducer getProducer(int id) {
+		return dataProducers.get(id);
+	}
+
+	public Collection<? extends PostHocStatistics> getPostHocStatistics() {
+		if (postHocStatsMap == null)
+			postHocStatsMap = new HashMap<Integer, PostHocStatistics>();
+
+		return postHocStatsMap.values();
+	}
+
+	public PostHocStatistics getPostHocStatistics(int id) {
+		if (postHocStatsMap == null)
+			postHocStatsMap = new HashMap<Integer, PostHocStatistics>();
+
+		return postHocStatsMap.get(id);
+	}
+
+	public void mapConsumerToProducer(DataConsumer consumer,
+			DataProducer producer) {
+		if (consumerProducerMap == null) {
+			consumerProducerMap = new HashMap<>();
+		}
+		consumerProducerMap.put(consumer.getID(), producer.getID());
+	}
+
+	private void addPostHocStatistics(PostHocStatistics posthoc, int id) {
+		if (postHocStatsMap == null) {
+			postHocStatsMap = new HashMap<Integer, PostHocStatistics>();
+		}
+		postHocStatsMap.put(id, posthoc);
+	}
 
 }
