@@ -26,7 +26,6 @@ public abstract class AbstractDataProducer extends
 	protected int id;
 
 	public static final String P_STATS = "stats";
-	public static final String P_SNAPSHOTS = "snapshots";
 	
 	protected List<Statistics> statList;
 
