@@ -6,9 +6,11 @@
 package org.bhave.experiment.run;
 
 import java.io.File;
+
 import org.bhave.experiment.Experiment;
 import org.bhave.experiment.ExperimentRunner;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 /**
@@ -32,6 +34,8 @@ public class MultiThreadedRunnerTest {
         ExperimentRunner runner = experiment.getRunner();
         runner.load(experiment);
         runner.start();
+        
+        
     }
 
 }
