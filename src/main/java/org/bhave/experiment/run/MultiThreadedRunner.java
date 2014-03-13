@@ -21,6 +21,7 @@ import org.bhave.experiment.ExperimentRunner;
 import org.bhave.experiment.Model;
 import org.bhave.experiment.data.consumer.DataConsumer;
 import org.bhave.experiment.data.consumer.RemoteDataConsumer;
+import org.bhave.experiment.data.posthoc.PostHocStatistics;
 import org.bhave.experiment.data.producer.DataProducer;
 import org.bhave.sweeper.CombinedParameterSweep;
 import org.joda.time.Period;
@@ -122,6 +123,12 @@ public class MultiThreadedRunner extends AbstractExperimentRunner {
 					// this is needed to retrieve the data from the producer
 					consumer.loadDataProducer(producer);
 					consumer.consume();
+				}
+
+				// process posthoc statistics
+				for (PostHocStatistics phStats : experiment
+						.getPostHocStatistics()) {
+					phStats.report(model);
 				}
 
 			} catch (InterruptedException | ExecutionException e) {

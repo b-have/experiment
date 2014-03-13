@@ -5,9 +5,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.commons.configuration.Configuration;
 import org.bhave.experiment.AbstractConfigurablePrototype;
 import org.bhave.experiment.Model;
 import org.bhave.experiment.data.DataExporter;
+import org.bhave.sweeper.CombinedParameterSweep;
 
 /**
  * A simple implementation that provides facilities to deal with Configurable
@@ -42,9 +44,9 @@ public abstract class AbstractPostHocStatistics extends
 		if (exporters != null) {
 			for (DataExporter exporter : exporters) {
 				// add column names to exporters
-				exporter.loadColumns(getDataColumns());
-				for (Properties dataRecord : this.measure(model)) {
-					List<String> columns = this.getDataColumns();
+				List<String> columns = this.getFullDataColumns();
+				exporter.loadColumns(columns);
+				for (Properties dataRecord : this.getFullData(model)) {
 					List<String> data = new ArrayList<>(columns.size());
 					for (String key : columns) {
 						data.add(dataRecord.getProperty(key));
@@ -66,5 +68,39 @@ public abstract class AbstractPostHocStatistics extends
 				exporter.finish();
 			}
 		}
+	}
+
+	private static final String CFG_STEP = "step";
+
+	public List<Properties> getFullData(Model model) {
+		List<Properties> data = this.measure(model);
+
+		// add aditional usefull model information such as step cfg_id and run
+		// to all the columns in the table this is usefull if you have multiple
+		// runs and want to track the statistics measured for each independent run
+		Configuration cfg = model.getConfiguration();
+		for (Properties props : data) {
+			long step = model.getStep();
+			int cfgid = cfg.getInt(CombinedParameterSweep.CFG_ID_PARAM);
+			int run = cfg.getInt(CombinedParameterSweep.RUN_PARAM);
+
+			props.setProperty(CFG_STEP, Long.toString(step));
+			props.setProperty(CombinedParameterSweep.CFG_ID_PARAM,
+					Integer.toString(cfgid));
+			props.setProperty(CombinedParameterSweep.RUN_PARAM,
+					Integer.toString(run));
+		}
+		return data;
+	}
+
+	public List<String> getFullDataColumns() {
+
+		LinkedList<String> columns = new LinkedList<>(this.getDataColumns());
+
+		columns.addFirst(CombinedParameterSweep.CFG_ID_PARAM);
+		columns.addFirst(CombinedParameterSweep.RUN_PARAM);
+		columns.addFirst(CFG_STEP);
+
+		return columns;
 	}
 }

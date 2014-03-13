@@ -7,6 +7,7 @@ import org.bhave.experiment.Configurable;
 import org.bhave.experiment.Model;
 import org.bhave.experiment.Prototype;
 import org.bhave.experiment.data.DataExporter;
+import org.bhave.sweeper.ParameterSweep;
 
 /**
  * <p>
@@ -67,6 +68,25 @@ public interface PostHocStatistics extends Configurable,
 	 * @return a list of names for the data columns.
 	 */
 	public List<String> getDataColumns();
+
+	/**
+	 * While the client should define the data column names the framework adds
+	 * some usefull information such as the configuration id the step in which
+	 * the information was recorded (final step in this case) and the current
+	 * run which is tipically indicated in the current configuration since we
+	 * use the {@link ParameterSweep} library.
+	 * 
+	 * @return
+	 */
+	public List<String> getFullDataColumns();
+
+	/**
+	 * Used in conjuction with the getComplete Data Columns This should append
+	 * the data produced with the information about the model.
+	 * 
+	 * @return
+	 */
+	public List<Properties> getFullData(Model model);
 
 	public void addExporter(DataExporter export);
 
