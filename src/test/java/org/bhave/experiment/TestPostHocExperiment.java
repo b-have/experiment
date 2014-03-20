@@ -14,59 +14,61 @@ import org.bhave.experiment.run.MultiThreadedRunner;
 
 public class TestPostHocExperiment extends TestCase {
 
-    @Test
-    public void testLoadExperiment() {
-        String filename = "experiment_posthoc.config";
-        File file = new File(Thread.currentThread().getContextClassLoader()
-                .getResource(filename).getPath().toString());
+	@Test
+	public void testLoadExperiment() {
+		String filename = "experiment_posthoc.config";
+		File file = new File(Thread.currentThread().getContextClassLoader()
+				.getResource(filename).getPath().toString());
 
-        assertTrue(file.exists());
+		assertTrue(file.exists());
 
-        Configuration configuration = null;
-        try {
-            configuration = new PropertiesConfiguration(file);
-        } catch (ConfigurationException e) {
-            fail("Configuration file failled to load");
-        }
+		Configuration configuration = null;
+		try {
+			configuration = new PropertiesConfiguration(file);
+		} catch (ConfigurationException e) {
+			fail("Configuration file failled to load");
+		}
 
-        assertTrue(configuration.containsKey(Experiment.P_EUID));
+		assertTrue(configuration.containsKey(Experiment.P_EUID));
 
-        Experiment experiment = Experiment.fromFile(file);
+		Experiment experiment = Experiment.fromFile(file);
+		experiment.getRunner().setPrintParamSpace(false);
 
-        assertNotNull(experiment.getModel());
+		assertNotNull(experiment.getModel());
 
-        assertNotNull(experiment.getRunner());
+		assertNotNull(experiment.getRunner());
 
-    }
+	}
 
-    @Test
-    public void testPostHocOutput() {
-    	String filename = "experiment_posthoc.config";
-        File file = new File(Thread.currentThread().getContextClassLoader()
-                .getResource(filename).getPath().toString());
+	@Test
+	public void testPostHocOutput() {
+		String filename = "experiment_posthoc.config";
+		File file = new File(Thread.currentThread().getContextClassLoader()
+				.getResource(filename).getPath().toString());
 
-        assertTrue(file.exists());
+		assertTrue(file.exists());
 
-        Configuration configuration = null;
-        try {
-            configuration = new PropertiesConfiguration(file);
-        } catch (ConfigurationException e) {
-            fail("Configuration file failled to load");
-        }
+		Configuration configuration = null;
+		try {
+			configuration = new PropertiesConfiguration(file);
+		} catch (ConfigurationException e) {
+			fail("Configuration file failled to load");
+		}
 
-        Experiment experiment = Experiment.fromFile(file);
+		Experiment experiment = Experiment.fromFile(file);
 
-        ExperimentRunner runner = experiment.getRunner();
-        assertNotNull(runner);
+		ExperimentRunner runner = experiment.getRunner();
+		runner.setPrintParamSpace(false);
+		assertNotNull(runner);
 
-        runner.load(experiment);
+		runner.load(experiment);
 
-        try {
-            runner.start();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+		try {
+			runner.start();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 
-    }
+	}
 
 }

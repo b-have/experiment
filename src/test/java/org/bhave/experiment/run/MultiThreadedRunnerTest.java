@@ -14,28 +14,33 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- *
+ * 
  * @author davide
  */
 public class MultiThreadedRunnerTest {
 
-    public MultiThreadedRunnerTest() {
-    }
+	public MultiThreadedRunnerTest() {
+	}
 
-    @Test
-    public void testSomeMethod() {
-        String filename = "experiment.config";
-        File file = new File(Thread.currentThread().getContextClassLoader()
-                .getResource(filename).getPath().toString());
-        Experiment experiment = Experiment.fromFile(file);
+	@Test
+	public void testSomeMethod() {
+		String filename = "experiment.config";
+		File file = new File(Thread.currentThread().getContextClassLoader()
+				.getResource(filename).getPath().toString());
+		Experiment experiment = Experiment.fromFile(file);
 
-        assertEquals(MultiThreadedRunner.class, experiment.getRunner().getClass());
+		assertEquals(MultiThreadedRunner.class, experiment.getRunner()
+				.getClass());
 
-        ExperimentRunner runner = experiment.getRunner();
-        runner.load(experiment);
-        runner.start();
-        
-        
-    }
+		ExperimentRunner runner = experiment.getRunner();
+		runner.load(experiment);
+		// we don't need the parameter space file created for the tests
+		runner.setPrintParamSpace(false);
+
+		assertFalse(runner.isPrintingParamSpace());
+
+		runner.start();
+
+	}
 
 }

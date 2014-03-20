@@ -54,10 +54,10 @@ public class TestFileDataExporter {
 		assertTrue(file.exists());
 		System.out.println("Test file: " + file.getPath());
 
-		// System.out.println("Deleting the file...");
-		// file.delete();
+		System.out.println("Deleting the file...");
+		file.delete();
 
-		// assertFalse(file.exists());
+		assertFalse(file.exists());
 
 	}
 

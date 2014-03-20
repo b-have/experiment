@@ -18,8 +18,9 @@ import org.joda.time.Period;
  * @author Davide Nunes
  */
 public class Console extends javax.swing.JFrame implements ExperimentConsole {
-    
-    Experiment experiment;
+	private static final long serialVersionUID = 1L;
+	
+	Experiment experiment;
     ExperimentRunner runner;
     
     public static void main(String args[]) {

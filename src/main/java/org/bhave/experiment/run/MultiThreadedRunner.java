@@ -1,13 +1,6 @@
 package org.bhave.experiment.run;
 
-import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -16,17 +9,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.apache.commons.configuration.Configuration;
-import org.bhave.experiment.Experiment;
-import org.bhave.experiment.ExperimentRunner;
 import org.bhave.experiment.Model;
 import org.bhave.experiment.data.consumer.DataConsumer;
-import org.bhave.experiment.data.consumer.RemoteDataConsumer;
 import org.bhave.experiment.data.posthoc.PostHocStatistics;
 import org.bhave.experiment.data.producer.DataProducer;
 import org.bhave.sweeper.CombinedParameterSweep;
 import org.joda.time.Period;
-
-import scala.annotation.meta.param;
 
 /**
  * This is an experiment runner that uses a the local computer threads as a mean
@@ -156,22 +144,7 @@ public class MultiThreadedRunner extends AbstractExperimentRunner {
 
 		executor.shutdown();
 
-		// experiment file name
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");
-		Calendar cal = Calendar.getInstance();
-
-		StringBuilder sb = new StringBuilder("param-space");
-
-		sb.append('_').append(dateFormat.format(cal.getTime()));
-		sb.append("experiment:").append(experiment.getUID());
-		sb.append('_');
-		sb.append(".csv");
-
-		try {
-			params.writeSweepFile(sb.toString());
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		writeParamSpace(params);
 		// shutdown experiment runner
 		shutdown();
 
