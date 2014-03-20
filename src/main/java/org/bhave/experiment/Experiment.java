@@ -1,6 +1,7 @@
 package org.bhave.experiment;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -369,14 +370,23 @@ public class Experiment {
 	}
 
 	public Collection<? extends DataProducer> getProducers() {
+		if (dataProducers == null) {
+			return new ArrayList<>(0);
+		}
 		return dataProducers.values();
 	}
 
 	public Collection<? extends DataConsumer> getConsumers() {
+		if (dataConsumers == null) {
+			return new ArrayList<>(0);
+		}
 		return dataConsumers.values();
 	}
 
 	public Map<Integer, Integer> getProducerConsumerMap() {
+		if (consumerProducerMap == null) {
+			return new HashMap<>();
+		}
 		return consumerProducerMap;
 	}
 

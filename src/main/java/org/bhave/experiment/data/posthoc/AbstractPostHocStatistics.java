@@ -1,6 +1,7 @@
 package org.bhave.experiment.data.posthoc;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -36,6 +37,12 @@ public abstract class AbstractPostHocStatistics extends
 			exporters = new LinkedList<>();
 		}
 		exporters.add(exporter);
+	}
+
+	public List<DataExporter> getExporters() {
+		if (exporters == null)
+			return new ArrayList<>();
+		return exporters;
 	}
 
 	@Override
@@ -77,7 +84,8 @@ public abstract class AbstractPostHocStatistics extends
 
 		// add aditional usefull model information such as step cfg_id and run
 		// to all the columns in the table this is usefull if you have multiple
-		// runs and want to track the statistics measured for each independent run
+		// runs and want to track the statistics measured for each independent
+		// run
 		Configuration cfg = model.getConfiguration();
 		for (Properties props : data) {
 			long step = model.getStep();

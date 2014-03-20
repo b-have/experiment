@@ -1,5 +1,6 @@
 package org.bhave.experiment.data.posthoc;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 
@@ -89,6 +90,8 @@ public interface PostHocStatistics extends Configurable,
 	public List<Properties> getFullData(Model model);
 
 	public void addExporter(DataExporter export);
+
+	public List<DataExporter> getExporters();
 
 	/**
 	 * Should use the {@link #measure(Model)} method to get the information out

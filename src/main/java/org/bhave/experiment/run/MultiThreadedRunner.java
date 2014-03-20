@@ -116,13 +116,15 @@ public class MultiThreadedRunner extends AbstractExperimentRunner {
 											estimatedTime.getSeconds()));
 				}
 
-				// process inMemory Data Consumers
-				for (DataConsumer consumer : inMemoryConsumers) {
-					DataProducer producer = model.getDataProducer(consumer
-							.getProducerID());
-					// this is needed to retrieve the data from the producer
-					consumer.loadDataProducer(producer);
-					consumer.consume();
+				if (inMemoryConsumers != null) {
+					// process inMemory Data Consumers
+					for (DataConsumer consumer : inMemoryConsumers) {
+						DataProducer producer = model.getDataProducer(consumer
+								.getProducerID());
+						// this is needed to retrieve the data from the producer
+						consumer.loadDataProducer(producer);
+						consumer.consume();
+					}
 				}
 
 				// process posthoc statistics
