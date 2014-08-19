@@ -17,7 +17,7 @@ import org.joda.time.Period;
  *
  * @author Davide Nunes
  */
-public class Console extends javax.swing.JFrame implements ExperimentConsole {
+public class GUIConsole extends javax.swing.JFrame implements ExperimentConsole {
 	private static final long serialVersionUID = 1L;
 	
 	Experiment experiment;
@@ -28,7 +28,7 @@ public class Console extends javax.swing.JFrame implements ExperimentConsole {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                Console console = new Console();
+                GUIConsole console = new GUIConsole();
                 console.setVisible(true);
             }
         });
@@ -38,7 +38,7 @@ public class Console extends javax.swing.JFrame implements ExperimentConsole {
     /**
      * Creates new form Console
      */
-    public Console() {
+    public GUIConsole() {
         initComponents();
     }
 

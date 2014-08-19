@@ -5,6 +5,8 @@
  */
 package org.bhave.experiment.data.consumer;
 
+import java.util.List;
+
 import org.bhave.experiment.data.producer.DataProducer;
 import org.bhave.experiment.Configurable;
 import org.bhave.experiment.data.DataExporter;
@@ -14,24 +16,26 @@ import org.bhave.experiment.data.DataExporter;
  */
 public interface DataConsumer extends Configurable {
 
-    public void consume();
+	public void consume();
 
-    public Class<? extends DataProducer> getTargetDataProducer();
+	public Class<? extends DataProducer> getTargetDataProducer();
 
-    public void addExporter(DataExporter exporter);
+	public void addExporter(DataExporter exporter);
 
-    void loadDataProducer(DataProducer producer);
+	public List<DataExporter> getExporters();
 
-    DataProducer getProducer();
+	void loadDataProducer(DataProducer producer);
 
-    int getProducerID();
+	DataProducer getProducer();
 
-    /**
-     * Cleanup code goes here
-     */
-    public void finish();
+	int getProducerID();
 
-    public void setID(int id);
+	/**
+	 * Cleanup code goes here
+	 */
+	public void finish();
 
-    public int getID();
+	public void setID(int id);
+
+	public int getID();
 }

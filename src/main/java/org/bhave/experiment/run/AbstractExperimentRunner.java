@@ -65,8 +65,8 @@ public abstract class AbstractExperimentRunner implements ExperimentRunner {
 		Model model = modelProto.create();
 
 		model.loadConfiguration(config);
-		// load data producers
 
+		// load data producers
 		for (DataProducer dataP : experiment.getProducers()) {
 			model.registerDataProducer(dataP.create());
 		}

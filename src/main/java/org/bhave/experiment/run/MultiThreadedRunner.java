@@ -20,9 +20,14 @@ import org.joda.time.Period;
  * This is an experiment runner that uses a the local computer threads as a mean
  * to parallelize the model execution.
  * 
+ * TODO use the EWMA (exponential weighted moving average) to compute the time
+ * remaining more accuratly.
+ * 
  * @author Davide Nunes
  */
 public class MultiThreadedRunner extends AbstractExperimentRunner {
+
+	private int totalSubmitted = 0;
 
 	@Override
 	public void start() {
@@ -42,24 +47,11 @@ public class MultiThreadedRunner extends AbstractExperimentRunner {
 		 * *********************************************** + submit "core"
 		 * number of tasks
 		 */
-		int numSubmitted = 0;
+
 		modelProto = experiment.getModel();
 
-		while (configs.hasNext() && numSubmitted < cores) {
-
-			Configuration config = configs.next();
-
-			// Setup the model with data producers
-			Model model = setupModel(modelProto, config, experiment);
-
-			pool.submit(model, model);
-			numSubmitted++;
-
-			if (console == null) {
-				int run = config.containsKey("run") ? config.getInt("run") : 1;
-				System.out.println("Submited Run: " + run);
-			}
-		}
+		// occupy all the cores with tasks (N cores = N tasks)
+		submitNTasks(configs, pool, cores);
 
 		/**
 		 * *********************************************** + keep submitting
@@ -124,30 +116,52 @@ public class MultiThreadedRunner extends AbstractExperimentRunner {
 			} catch (InterruptedException | ExecutionException e) {
 				throw new RuntimeException(e);
 			}
-			// submit another task
-			if (configs.hasNext()) {
-				Configuration config = configs.next();
-				// setup the model with data producers
-				Model model = setupModel(modelProto, config, experiment);
 
-				pool.submit(model, model);
-				numSubmitted++;
+			// submit 1 more task
+			submitNTasks(configs, pool, 1);
 
-				if (console == null) {
-					int run = config.containsKey("run") ? config.getInt("run")
-							: 1;
-					System.out.println("Submited Run: " + run);
-				}
-			}
 		}
 		System.out.println("All done, shuttdown executor");
 
 		executor.shutdown();
 
+		// if enabled
 		writeParamSpace(params);
+
 		// shutdown experiment runner
 		shutdown();
 
+	}
+
+	/**
+	 * Initial task submission to occupy all the execution nodes (cores)
+	 * 
+	 * @param configs
+	 * @param pool
+	 * @param cores
+	 */
+	private void submitNTasks(Iterator<Configuration> configs,
+			CompletionService<Model> pool, int submissions) {
+		int submitted = 0;
+
+		// only submite while there's something to submit
+		while (configs.hasNext() && submitted < submissions) {
+
+			Configuration config = configs.next();
+
+			// Setup the model with data producers
+			Model model = setupModel(modelProto, config, experiment);
+
+			pool.submit(model, model);
+			totalSubmitted++;
+
+			submitted++;
+
+			if (console == null) {
+				int run = config.containsKey("run") ? config.getInt("run") : 1;
+				System.out.println("Submited Run: " + run);
+			}
+		}
 	}
 
 	@Override

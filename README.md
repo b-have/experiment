@@ -57,8 +57,12 @@ params.1.value.from = 0
 params.1.value.to = 10
 params.1.value.step = 1
 
-
-
 ```
+
+## Running an Experiment ## 
+To run experiments and take advantage of multiple existing processing nodes (multiple cores for instance) I include a MultiThreadedRunner class (see example above). This runner basically takes the experiment and submits the multiple runs making sure all the cores are allways busy. I have developed another runner that uses a grid infrastructure (using the [gridgain](http://www.gridgain.com/) platform) to deploy the simulation runs but this is not yet included.
+
+To run an experiment we need something to assemble all the experiment components into one place. For this we have the _ExperimentConsole_ implementations. There are two options, a simple GUI based console which allow us to load configuration files and start experiments and a text-based console which basically loads a given configuration file and displays the progress using a text-based progress bar. 
+
 
 

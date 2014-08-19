@@ -8,11 +8,12 @@ package org.bhave.experiment.run;
 import org.joda.time.Period;
 
 /**
- *
+ * 
  * @author davide
  */
 public interface ExperimentConsole {
 
-    public void updateProgress(final Period remaining, final int value, final int currentRun, final int totalRuns);
+	public void updateProgress(final Period remaining, final int value,
+			final int currentRun, final int totalRuns);
 
 }
