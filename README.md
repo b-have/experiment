@@ -3,7 +3,7 @@ Experiment Building Library
 
 A Java framework to build and execute experiments and collect data.
 
-Uses the parameter sweeping library [bhave sweeper](https://github.com/b-have/bhave.sweeper/)
+Uses the parameter sweeping library [param-sweeper](https://github.com/davidenunes/param-sweeper/)
 Currently, it provides a basic multi-thread experiment runner and a simple console to load experiments
 
 Example of an experiment configuration file using kafka as a service to produce and collect data:
